@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE files
+.vscode/
+.idea/
+
+# Large datasets and model checkpoints (Section 11)
+data/raw/*
+!data/raw/.gitkeep
+models/*.pt
+models/*.bin
+models/*.onnx
+
+# System & OS
+.DS_Store
+Thumbs.db
+
+# Documentation PRD notes
+P3_Personal_PRD_Integration_Product.docx
