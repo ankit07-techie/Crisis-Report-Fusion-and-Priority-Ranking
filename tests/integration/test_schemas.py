@@ -43,5 +43,6 @@ def test_prediction_creation_and_evaluation_record_conversion():
     assert eval_rec.item_id == pred.item_id
     assert eval_rec.predicted_cluster_id == pred.predicted_cluster_id
     assert eval_rec.category == pred.category
+    assert eval_rec.predicted_information_category == pred.category
     assert eval_rec.priority_score == 4.5
     assert eval_rec.evidence_ids == ["REP_001", "REP_002"]

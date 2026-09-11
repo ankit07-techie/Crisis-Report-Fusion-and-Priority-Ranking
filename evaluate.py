@@ -93,12 +93,13 @@ def write_evaluation_output(records: List[EvaluationRecord], output_path: Path, 
                     "item_id": rec.item_id,
                     "predicted_cluster_id": rec.predicted_cluster_id,
                     "category": rec.category,
+                    "predicted_information_category": rec.predicted_information_category,
                     "priority_score": rec.priority_score,
                     "evidence_ids": rec.evidence_ids
                 }
                 f.write(json.dumps(line_data) + "\n")
     elif out_format == "csv":
-        fieldnames = ["item_id", "predicted_cluster_id", "category", "priority_score", "evidence_ids"]
+        fieldnames = ["item_id", "predicted_cluster_id", "category", "predicted_information_category", "priority_score", "evidence_ids"]
         with open(output_path, "w", encoding="utf-8", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
@@ -107,6 +108,7 @@ def write_evaluation_output(records: List[EvaluationRecord], output_path: Path, 
                     "item_id": rec.item_id,
                     "predicted_cluster_id": rec.predicted_cluster_id,
                     "category": rec.category,
+                    "predicted_information_category": rec.predicted_information_category,
                     "priority_score": rec.priority_score,
                     "evidence_ids": ";".join(rec.evidence_ids)
                 })

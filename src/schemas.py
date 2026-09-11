@@ -43,6 +43,7 @@ class EvaluationRecord(BaseModel):
     item_id: str = Field(..., description="Original opaque item identifier")
     predicted_cluster_id: str = Field(..., description="Predicted incident/cluster identifier")
     category: str = Field(..., description="Predicted information category")
+    predicted_information_category: str = Field(..., description="Predicted information category (alias)")
     priority_score: float = Field(..., description="Operational priority score")
     evidence_ids: List[str] = Field(default_factory=list, description="Evidence item IDs")
 
@@ -55,6 +56,7 @@ class EvaluationRecord(BaseModel):
             item_id=pred.item_id,
             predicted_cluster_id=pred.predicted_cluster_id,
             category=pred.category,
+            predicted_information_category=pred.category,
             priority_score=round(pred.priority_score, 2),
             evidence_ids=list(pred.evidence_ids)
         )

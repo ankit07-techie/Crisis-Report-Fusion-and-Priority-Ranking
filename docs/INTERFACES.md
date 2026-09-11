@@ -156,5 +156,45 @@ python evaluate.py --input <path_to_input> --output <path_to_output> [--format j
   - `item_id` (str)
   - `predicted_cluster_id` (str)
   - `category` (str)
+  - `predicted_information_category` (str)
   - `priority_score` (float)
   - `evidence_ids` (List[str] or comma-separated string)
+
+---
+
+## 5. P1/P2 HANDOFF
+
+### Instructions for P1 (Clustering / Incident Fusion Engineer):
+- **Target File**: Implement in `src/clustering.py` (or `src/fusion.py`).
+- **Required Function**:
+  ```python
+  def cluster_reports(reports: List[Report]) -> List[ClusterResult]:
+      ...
+  ```
+  *(Optionally also `assign_cluster(report: Report, existing_reports: Optional[List[Report]]) -> ClusterResult`)*
+- **Input**: `List[Report]`, where each `Report` provides `.id` (str) and `.text` (str).
+- **Expected Output**: `List[ClusterResult]`, where each `ClusterResult` has:
+  - `cluster_id` (str): Incident group ID (e.g., `"INCIDENT_001"`).
+  - `evidence_ids` (List[str]): List of report IDs belonging to this cluster.
+  - `confidence` (float, default 1.0): Clustering confidence.
+  - `summary` (Optional[str]): Incident summary or exemplar snippet.
+- **Note**: Do NOT worry about UI or evaluation I/O; P3 pipeline consumes your function directly.
+
+---
+
+### Instructions for P2 (Classification & Priority Engineer):
+- **Target File**: Implement in `src/classification.py` and `src/priority.py` (or `src/prediction.py`).
+- **Required Functions**:
+  ```python
+  def predict_category(text: str) -> str:
+      ...
+
+  def predict_priority(text: str) -> float:
+      ...
+  ```
+- **Inputs**: Raw crisis report string `text: str`.
+- **Expected Outputs**:
+  - `predict_category(text)`: Returns category string (e.g., `"Search & Rescue"`, `"Medical Assistance"`, `"Infrastructure Damage"`, `"Hazardous Material / Fire"`, `"Food & Water Shortage"`, `"Shelter & Evacuation"`, `"General Information"`).
+  - `predict_priority(text)`: Returns a numeric float between `1.0` (Lowest) and `5.0` (Critical Emergency).
+- **Note**: P3 integration handles batch orchestration and evidence binding automatically.
+
