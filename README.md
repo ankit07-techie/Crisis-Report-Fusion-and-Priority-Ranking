@@ -31,6 +31,22 @@ For exact function signatures and interface contracts for P1, P2, and P3, see [d
 
 ---
 
+11 official categories
+
+Your model predicts one of these:
+
+Location — where something is happening
+EmergingThreats — developing/new threats
+MultimediaShare — photos/videos/media being shared
+MovePeople — information about moving people
+NewSubEvent — newly reported sub-event
+FirstPartyObservation — direct observation from the scene
+InformationWanted — request for information
+ServiceAvailable — a service/resource is available
+SearchAndRescue — search/rescue information
+Volunteer — volunteer-related information
+GoodsServices — goods/services-related information
+
 ## 2. Quickstart & Installation
 
 ### Prerequisites
