@@ -23,6 +23,8 @@ data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+data/predictions*.jsonl
+data/trec_is_prepared.json
 *.jar
 scratch/
 models/*.pt
