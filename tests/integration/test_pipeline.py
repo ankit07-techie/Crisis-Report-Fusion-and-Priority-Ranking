@@ -44,3 +44,37 @@ def test_pipeline_batch_and_fusion():
     # R3 should have a different incident cluster
     assert p3.predicted_cluster_id != p1.predicted_cluster_id
     assert p3.category == "Medical Assistance"
+
+
+def test_pipeline_dict_clustering_support():
+    pipeline = CrisisPipeline()
+    # Mock cluster function returning a raw dictionary {report_id: cluster_id}
+    pipeline._cluster_fn = lambda reports, **kw: {
+        "R1": "INCIDENT_CUSTOM_1",
+        "R2": "INCIDENT_CUSTOM_1",
+        "R3": "INCIDENT_CUSTOM_2"
+    }
+    r1 = Report(id="R1", text="Flood in sector 1.")
+    r2 = Report(id="R2", text="Flood waters in sector 1.")
+    r3 = Report(id="R3", text="Gas leak.")
+    
+    preds = pipeline.process_batch([r1, r2, r3])
+    p1 = next(p for p in preds if p.item_id == "R1")
+    p2 = next(p for p in preds if p.item_id == "R2")
+    p3 = next(p for p in preds if p.item_id == "R3")
+    
+    assert p1.predicted_cluster_id == "INCIDENT_CUSTOM_1"
+    assert p2.predicted_cluster_id == "INCIDENT_CUSTOM_1"
+    assert p3.predicted_cluster_id == "INCIDENT_CUSTOM_2"
+    assert "R2" in p1.evidence_ids
+    assert "R1" in p2.evidence_ids
+
+
+def test_pipeline_string_priority_support():
+    pipeline = CrisisPipeline()
+    # Mock priority function returning categorical string "CRITICAL"
+    pipeline._priority_fn = lambda text: "CRITICAL"
+    
+    rep = Report(id="REP_001", text="Emergency situation.")
+    pred = pipeline.process_report(rep)
+    assert pred.priority_score == 5.0

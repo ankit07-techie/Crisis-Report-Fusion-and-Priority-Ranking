@@ -23,17 +23,17 @@ logger = logging.getLogger("evaluate")
 
 
 def detect_id_and_text_keys(row: Dict[str, Any]) -> tuple[str, str]:
-    """Detect the opaque ID key and text key from possible variations."""
-    id_candidates = ["item_id", "id", "report_id", "uid", "item"]
-    text_candidates = ["text", "report_text", "content", "body", "message", "report"]
+    """Detect the opaque ID key and text key from possible variations (case-insensitive)."""
+    id_candidates = {"item_id", "id", "report_id", "uid", "item"}
+    text_candidates = {"text", "report_text", "content", "body", "message", "report"}
     
-    found_id = next((k for k in id_candidates if k in row), None)
-    found_text = next((k for k in text_candidates if k in row), None)
+    found_id = next((k for k in row if str(k).strip().lower() in id_candidates), None)
+    found_text = next((k for k in row if str(k).strip().lower() in text_candidates), None)
     
     if not found_id or not found_text:
         raise ValueError(
             f"Input row missing required ID or text field. Available keys: {list(row.keys())}. "
-            f"Expected one of ID {id_candidates} and one of text {text_candidates}."
+            f"Expected one of ID {sorted(id_candidates)} and one of text {sorted(text_candidates)}."
         )
     return found_id, found_text
 

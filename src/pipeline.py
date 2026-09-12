@@ -32,7 +32,7 @@ class CrisisPipeline:
 
     def _resolve_p1(self) -> tuple[Callable, Callable, str]:
         """Dynamically resolve P1 clustering module or fall back to stub."""
-        candidates = ["src.clustering", "src.fusion", "clustering", "fusion"]
+        candidates = ["src.clustering", "src.fusion", "src.cluster", "clustering", "fusion", "cluster"]
         for mod_name in candidates:
             try:
                 mod = importlib.import_module(mod_name)
@@ -49,7 +49,10 @@ class CrisisPipeline:
 
     def _resolve_p2(self) -> tuple[Callable, Callable, str]:
         """Dynamically resolve P2 prediction modules or fall back to stub."""
-        candidates = ["src.classification", "src.priority", "src.prediction"]
+        candidates = [
+            "src.category", "src.classification", "src.priority", "src.prediction",
+            "category", "classification", "priority", "prediction"
+        ]
         cat_fn = None
         pri_fn = None
         source_names = []
@@ -74,6 +77,68 @@ class CrisisPipeline:
             
         return cat_fn, pri_fn, ", ".join(source_names)
 
+    def _normalize_cluster_results(self, raw_clusters: Any, reports: List[Report]) -> List[ClusterResult]:
+        """
+        Normalize clustering output to a standard List[ClusterResult].
+        Supports:
+        - List[ClusterResult]
+        - Dict[str, str]: mapping of report_id -> cluster_id
+        - List[dict]: list of dict representations
+        """
+        if not raw_clusters:
+            return [ClusterResult(cluster_id=f"INCIDENT_{idx+1:03d}", evidence_ids=[r.id]) for idx, r in enumerate(reports)]
+            
+        # Case 1: Dict mapping {report_id: cluster_id}
+        if isinstance(raw_clusters, dict):
+            cluster_groups: dict[str, List[str]] = {}
+            for r in reports:
+                cid = str(raw_clusters.get(r.id, f"INCIDENT_{len(cluster_groups) + 1:03d}"))
+                cluster_groups.setdefault(cid, []).append(r.id)
+            return [
+                ClusterResult(cluster_id=cid, evidence_ids=rids, confidence=1.0)
+                for cid, rids in cluster_groups.items()
+            ]
+            
+        # Case 2: List of items
+        normalized: List[ClusterResult] = []
+        if isinstance(raw_clusters, list):
+            for item in raw_clusters:
+                if isinstance(item, ClusterResult):
+                    normalized.append(item)
+                elif isinstance(item, dict):
+                    normalized.append(ClusterResult(
+                        cluster_id=str(item.get("cluster_id", "INCIDENT_001")),
+                        evidence_ids=[str(x) for x in item.get("evidence_ids", [])],
+                        confidence=float(item.get("confidence", 1.0)),
+                        summary=item.get("summary")
+                    ))
+            if normalized:
+                return normalized
+                
+        # Default fallback
+        return [ClusterResult(cluster_id="INCIDENT_001", evidence_ids=[r.id for r in reports])]
+
+    def _call_cluster_fn(self, reports: List[Report]) -> List[ClusterResult]:
+        """Safely invoke P1 cluster function with keyword or positional arguments."""
+        try:
+            raw = self._cluster_fn(reports, similarity_threshold=self.config.similarity_threshold)
+        except TypeError:
+            raw = self._cluster_fn(reports)
+        return self._normalize_cluster_results(raw, reports)
+
+    def _safe_parse_priority(self, raw_pri: Any) -> float:
+        """Parse priority score from float, int, or categorical string."""
+        if isinstance(raw_pri, (int, float)):
+            score = float(raw_pri)
+        elif isinstance(raw_pri, str):
+            try:
+                score = float(raw_pri.strip())
+            except ValueError:
+                score = self.config.priority_levels.get(raw_pri.strip().upper(), 3.0)
+        else:
+            score = 3.0
+        return round(max(self.config.min_priority, min(self.config.max_priority, score)), 2)
+
     def process_report(self, report: Report) -> Prediction:
         """
         Process a single crisis report through clustering, classification, priority,
@@ -81,14 +146,30 @@ class CrisisPipeline:
         """
         # 1. Cluster Assignment (P1)
         if self._assign_fn:
-            cluster_res = self._assign_fn(
-                report,
-                existing_reports=self._indexed_reports,
-                similarity_threshold=self.config.similarity_threshold
-            )
+            try:
+                raw_res = self._assign_fn(
+                    report,
+                    existing_reports=self._indexed_reports,
+                    similarity_threshold=self.config.similarity_threshold
+                )
+            except TypeError:
+                raw_res = self._assign_fn(report, self._indexed_reports)
+                
+            if isinstance(raw_res, ClusterResult):
+                cluster_res = raw_res
+            elif isinstance(raw_res, dict):
+                cluster_res = ClusterResult(
+                    cluster_id=str(raw_res.get("cluster_id", "INCIDENT_001")),
+                    evidence_ids=[str(x) for x in raw_res.get("evidence_ids", [report.id])],
+                    confidence=float(raw_res.get("confidence", 1.0))
+                )
+            elif isinstance(raw_res, str):
+                cluster_res = ClusterResult(cluster_id=raw_res, evidence_ids=[report.id])
+            else:
+                cluster_res = ClusterResult(cluster_id="INCIDENT_001", evidence_ids=[report.id])
         else:
             all_reports = self._indexed_reports + [report]
-            all_clusters = self._cluster_fn(all_reports, similarity_threshold=self.config.similarity_threshold)
+            all_clusters = self._call_cluster_fn(all_reports)
             cluster_res = next((c for c in all_clusters if report.id in c.evidence_ids), None)
             if not cluster_res:
                 cluster_res = ClusterResult(cluster_id="INCIDENT_001", evidence_ids=[report.id])
@@ -99,8 +180,8 @@ class CrisisPipeline:
             self._indexed_reports.append(report)
             
         # 2. Category & Priority Prediction (P2)
-        category = self._category_fn(report.text)
-        priority = float(self._priority_fn(report.text))
+        category = str(self._category_fn(report.text))
+        priority = self._safe_parse_priority(self._priority_fn(report.text))
         
         # 3. Evidence ID Association (P3)
         evidence_ids = self.evidence_registry.get_evidence_for_report(
@@ -124,10 +205,8 @@ class CrisisPipeline:
         if not reports:
             return []
             
-        # Cluster all reports
-        clusters: List[ClusterResult] = self._cluster_fn(
-            reports, similarity_threshold=self.config.similarity_threshold
-        )
+        # Cluster all reports through safe invocation and normalization
+        clusters: List[ClusterResult] = self._call_cluster_fn(reports)
         
         # Map report ID to assigned cluster
         report_to_cluster: dict[str, ClusterResult] = {}
@@ -147,11 +226,12 @@ class CrisisPipeline:
         predictions: List[Prediction] = []
         for r in reports:
             cluster_res = report_to_cluster.get(r.id)
-            cid = cluster_res.cluster_id if cluster_res else "INCIDENT_001"
+            # Use consistently registered cluster ID
+            cid = self.evidence_registry._report_to_cluster.get(r.id, "INCIDENT_001")
             confidence = cluster_res.confidence if cluster_res else 1.0
             
-            cat = self._category_fn(r.text)
-            pri = float(self._priority_fn(r.text))
+            cat = str(self._category_fn(r.text))
+            pri = self._safe_parse_priority(self._priority_fn(r.text))
             ev_ids = self.evidence_registry.get_evidence_for_report(
                 r.id, max_items=self.config.max_evidence_per_cluster
             )

@@ -40,3 +40,17 @@ def test_evidence_registry():
     related = registry.get_related_reports("INCIDENT_001")
     assert len(related) == 2
     assert {r.id for r in related} == {"REP_001", "REP_002"}
+
+
+def test_evidence_reassignment():
+    registry = EvidenceRegistry()
+    r1 = Report(id="REP_001", text="Bridge collapsed.")
+    
+    # Initially registered in INCIDENT_001
+    registry.register_report(r1, "INCIDENT_001")
+    assert registry.get_cluster_evidence("INCIDENT_001") == ["REP_001"]
+    
+    # Reassigned to INCIDENT_002
+    registry.register_report(r1, "INCIDENT_002")
+    assert registry.get_cluster_evidence("INCIDENT_001") == []
+    assert registry.get_cluster_evidence("INCIDENT_002") == ["REP_001"]

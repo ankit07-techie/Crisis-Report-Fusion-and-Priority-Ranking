@@ -31,11 +31,16 @@ class Prediction(BaseModel):
     item_id: str = Field(..., description="Original report/item identifier")
     predicted_cluster_id: str = Field(..., description="Assigned incident/cluster identifier")
     category: str = Field(..., description="Predicted crisis information category")
+    predicted_information_category: Optional[str] = Field(None, description="Predicted information category (alias)")
     priority_score: float = Field(..., description="Operational priority score (1.0 to 5.0 scale)")
     evidence_ids: List[str] = Field(default_factory=list, description="IDs of actual reports associated as evidence")
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional context or diagnostics")
 
     model_config = ConfigDict(extra="ignore")
+
+    def model_post_init(self, __context: Any) -> None:
+        if not self.predicted_information_category:
+            self.predicted_information_category = self.category
 
 
 class EvaluationRecord(BaseModel):

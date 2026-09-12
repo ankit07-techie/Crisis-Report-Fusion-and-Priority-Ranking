@@ -86,3 +86,34 @@ def test_evaluate_cli_csv(tmp_path):
     assert rows[0]["item_id"] == "ID_101"
     assert rows[0]["category"] == "Hazardous Material / Fire"
     assert "ID_101" in rows[0]["evidence_ids"]
+
+
+def test_evaluate_case_insensitive_keys(tmp_path):
+    # Test that uppercase or mixed-case headers (e.g. ITEM_ID, TEXT) work transparently
+    input_file = tmp_path / "case_input.csv"
+    output_file = tmp_path / "case_output.csv"
+    
+    with open(input_file, "w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["ITEM_ID", "TEXT"])
+        writer.writerow(["CASE_01", "Trapped victims on roof."])
+        
+    cmd = [
+        sys.executable,
+        "evaluate.py",
+        "--input", str(input_file),
+        "--output", str(output_file),
+        "--format", "csv"
+    ]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    assert res.returncode == 0, f"evaluate.py failed with: {res.stderr}"
+    assert output_file.exists()
+    
+    with open(output_file, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+        
+    assert len(rows) == 1
+    assert rows[0]["item_id"] == "CASE_01"
+    assert rows[0]["category"] == "Search & Rescue"
+    assert rows[0]["predicted_information_category"] == "Search & Rescue"

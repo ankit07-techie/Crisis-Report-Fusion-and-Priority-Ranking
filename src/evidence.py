@@ -36,6 +36,13 @@ class EvidenceRegistry:
     def register_report(self, report: Report, cluster_id: str) -> None:
         """Register an ingested report and its assigned cluster."""
         self._known_reports[report.id] = report
+        
+        # Clean up previous cluster association if report is reassigned
+        old_cluster = self._report_to_cluster.get(report.id)
+        if old_cluster and old_cluster != cluster_id and old_cluster in self._cluster_to_reports:
+            if report.id in self._cluster_to_reports[old_cluster]:
+                self._cluster_to_reports[old_cluster].remove(report.id)
+                
         self._report_to_cluster[report.id] = cluster_id
         
         if cluster_id not in self._cluster_to_reports:
