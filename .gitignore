@@ -21,6 +21,10 @@ htmlcov/
 # Large datasets and model checkpoints (Section 11)
 data/raw/*
 !data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+*.jar
+scratch/
 models/*.pt
 models/*.bin
 models/*.onnx
@@ -31,3 +35,4 @@ Thumbs.db
 
 # Documentation PRD notes
 P3_Personal_PRD_Integration_Product.docx
+Applied_AI_Intelligent_Systems.pdf
