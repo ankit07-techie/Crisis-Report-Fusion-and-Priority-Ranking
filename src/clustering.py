@@ -50,7 +50,7 @@ def cluster_reports(
 
     Args:
         reports: List of Report objects (each containing 'id' and 'text').
-        similarity_threshold: Cosine similarity cutoff (default 0.55).
+        similarity_threshold: Cosine similarity cutoff (default 0.54).
 
     Returns:
         List of ClusterResult objects.
@@ -139,7 +139,7 @@ def assign_cluster(
     Args:
         report: Single incoming Report.
         existing_reports: History of previously indexed reports.
-        similarity_threshold: Similarity cutoff (default 0.55).
+        similarity_threshold: Similarity cutoff (default 0.54).
 
     Returns:
         ClusterResult with cluster assignment and evidence report IDs.
