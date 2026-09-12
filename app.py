@@ -30,6 +30,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+def render_html(html_code: str) -> None:
+    """Safely render HTML without Markdown indented-code-block or paragraph breakage."""
+    if hasattr(st, "html"):
+        st.html(html_code)
+    else:
+        cleaned = "\n".join(line.strip() for line in html_code.splitlines() if line.strip())
+        st.markdown(cleaned, unsafe_allow_html=True)
+
 # -------------------------------------------------------------
 # 2. Official Metadata & Operational Taxonomies
 # -------------------------------------------------------------
@@ -47,45 +55,67 @@ OFFICIAL_CATEGORIES = {
     "NewSubEvent": "Emergent secondary event or escalations",
 }
 
-def get_priority_meta(score: float) -> Dict[str, str]:
-    """Provide calibrated operational interpretations for priority scores."""
-    if score >= 4.5:
+def get_priority_meta(score: float, category: str = "", text: str = "") -> Dict[str, str]:
+    """Provide calibrated operational interpretations and explainability for priority scores."""
+    text_lower = text.lower() if text else ""
+    critical_terms = ["trapped", "collapse", "urgent", "rescue", "drowning", "cannot breathe", "dying", "explosion", "severe", "critical", "bleeding"]
+    has_critical = any(t in text_lower for t in critical_terms)
+
+    if score >= 4.5 or (has_critical and score >= 3.8):
         return {
             "label": "Critical",
             "badge_class": "badge-critical",
             "box_class": "metric-box-critical",
             "status_text": "Immediate attention required",
-            "basis": "This report contains indications of immediate risk and an urgent need for emergency response.",
+            "basis": "This report contains indications of immediate risk and a need for emergency response.",
             "color": "#dc2626",
             "bg_tint": "#fef2f2"
         }
     elif score >= 3.5:
+        if "flood" in text_lower or "blocked" in text_lower or "hazard" in text_lower:
+            basis = "This report describes escalating environmental hazards requiring prioritized dispatch."
+        else:
+            basis = "This report describes escalating conditions requiring prioritized resource dispatch."
         return {
             "label": "High",
             "badge_class": "badge-high",
             "box_class": "metric-box-high",
             "status_text": "Urgent operational dispatch required",
-            "basis": "This report describes escalating conditions requiring prioritized resource dispatch.",
+            "basis": basis,
             "color": "#ea580c",
             "bg_tint": "#fff7ed"
         }
     elif score >= 2.5:
+        if "shelter" in text_lower or "evacuat" in text_lower:
+            basis = "This report indicates displaced civilian shelter or transit assistance coordination."
+        elif "medical" in text_lower or "supplies" in text_lower or "camp" in text_lower:
+            basis = "This report provides relief logistics, medical support services, or aid distribution coordination."
+        else:
+            basis = "This report indicates support services, supply logistics, or general assistance requirements."
         return {
             "label": "Medium",
             "badge_class": "badge-medium",
             "box_class": "metric-box-medium",
             "status_text": "Coordinated relief response",
-            "basis": "This report indicates support services, supply logistics, or general assistance requirements.",
+            "basis": basis,
             "color": "#d97706",
             "bg_tint": "#fffbeb"
         }
     else:
+        if "medical" in text_lower or "supplies" in text_lower or "camp" in text_lower:
+            basis = "This report provides routine aid camp logistics and relief service availability updates."
+        elif "shelter" in text_lower or "where" in text_lower or "information" in text_lower:
+            basis = "This report represents informational inquiries regarding shelter locations or evacuation guidance."
+        elif "route" in text_lower or "road" in text_lower:
+            basis = "This report contains geographic routing observations and baseline road status."
+        else:
+            basis = "This report represents informational inquiries or non-immediate situational observations."
         return {
             "label": "Low",
             "badge_class": "badge-low",
             "box_class": "metric-box-low",
             "status_text": "Routine situational awareness",
-            "basis": "This report represents informational inquiries or non-immediate situational observations.",
+            "basis": basis,
             "color": "#2563eb",
             "bg_tint": "#eff6ff"
         }
@@ -295,14 +325,14 @@ st.markdown("""
     /* Evidence Pills */
     .evidence-pill {
         display: inline-block;
-        background-color: #f1f5f9;
-        color: #1e293b;
-        border: 1px solid #cbd5e1;
+        background-color: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
         border-radius: 4px;
         padding: 3px 9px;
-        margin: 2px 4px 2px 0;
+        margin: 2px 6px 2px 0;
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        font-size: 0.82rem;
+        font-size: 0.80rem;
         font-weight: 600;
     }
 
@@ -312,10 +342,19 @@ st.markdown("""
         border: 1px solid #bae6fd;
         border-radius: 6px;
         padding: 10px 14px;
-        color: #0369a1;
-        font-size: 0.82rem;
-        line-height: 1.45;
-        margin-top: 14px;
+        margin-top: 0;
+    }
+    .basis-box-meta {
+        font-size: 0.77rem;
+        color: #64748b;
+        margin-bottom: 4px;
+        line-height: 1.35;
+    }
+    .basis-box-text {
+        font-size: 0.84rem;
+        font-weight: 600;
+        color: #0f172a;
+        line-height: 1.4;
     }
 
     /* Button Primary */
@@ -557,7 +596,7 @@ if nav_selection == "01 — Live Triage":
 
         now_display = datetime.now().strftime("%d %b %Y, %I:%M %p")
 
-        st.markdown(f"""
+        render_html(f"""
         <div class="op-card-header">
             <h2 class="op-card-title">🛡️ Operational Assessment</h2>
             <div style="font-size: 0.78rem; color: #64748b; font-weight: 500;">{now_display}</div>
@@ -565,10 +604,10 @@ if nav_selection == "01 — Live Triage":
         <div class="op-card-subtitle">
             Generated using incident fusion (P1), information classification (P2) and priority ranking (P2).
         </div>
-        """, unsafe_allow_html=True)
+        """)
 
         if pred is None:
-            st.markdown("""
+            render_html("""
             <div class="empty-state-box">
                 <div style="font-size: 2rem; margin-bottom: 8px;">🛡️</div>
                 <div style="font-size: 1.05rem; font-weight: 700; color: #334155; margin-bottom: 4px;">No assessment yet</div>
@@ -576,16 +615,15 @@ if nav_selection == "01 — Live Triage":
                     Enter an incoming report to generate an operational assessment.
                 </div>
             </div>
-            """, unsafe_allow_html=True)
+            """)
         else:
-            pri_meta = get_priority_meta(pred.priority_score)
+            pri_meta = get_priority_meta(pred.priority_score, pred.category, curr_report.text if curr_report else "")
             cat_desc = OFFICIAL_CATEGORIES.get(pred.category, "Humanitarian crisis information")
             ev_count = len(pred.evidence_ids)
 
             # 4-Box Metric Grid
-            st.markdown(f"""
+            render_html(f"""
             <div class="metric-grid">
-                <!-- 1. Incident -->
                 <div class="metric-box">
                     <div>
                         <div class="metric-box-label">Incident</div>
@@ -595,8 +633,6 @@ if nav_selection == "01 — Live Triage":
                     </div>
                     <div class="metric-box-desc">Grouped with similar reports</div>
                 </div>
-
-                <!-- 2. Information Category -->
                 <div class="metric-box">
                     <div>
                         <div class="metric-box-label">Category</div>
@@ -606,8 +642,6 @@ if nav_selection == "01 — Live Triage":
                     </div>
                     <div class="metric-box-desc">{cat_desc}</div>
                 </div>
-
-                <!-- 3. Operational Priority -->
                 <div class="metric-box {pri_meta['box_class']}">
                     <div>
                         <div class="metric-box-label">Priority</div>
@@ -620,8 +654,6 @@ if nav_selection == "01 — Live Triage":
                         {pri_meta['status_text']}
                     </div>
                 </div>
-
-                <!-- 4. Reports in this Incident -->
                 <div class="metric-box">
                     <div>
                         <div class="metric-box-label">Reports</div>
@@ -630,34 +662,36 @@ if nav_selection == "01 — Live Triage":
                     <div class="metric-box-desc">(including this one)</div>
                 </div>
             </div>
-            """, unsafe_allow_html=True)
+            """)
 
             # Supporting Evidence (Actual Dynamic IDs)
-            st.markdown("""
-            <div style="font-size: 0.88rem; font-weight: 700; color: #0f172a; margin-bottom: 2px;">
-                🗄️ Supporting Evidence
+            render_html("""
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.90rem; font-weight: 700; color: #0f172a; margin-top: 18px; margin-bottom: 2px;">
+                <span style="font-size: 1rem;">🗄️</span>
+                <span>Supporting Evidence</span>
             </div>
             <div style="font-size: 0.80rem; color: #64748b; margin-bottom: 8px;">
                 Original reports associated with this incident:
             </div>
-            """, unsafe_allow_html=True)
+            """)
 
             if pred.evidence_ids:
                 pills_html = "".join([f'<span class="evidence-pill">{eid}</span>' for eid in pred.evidence_ids])
-                st.markdown(f"<div style='margin-bottom: 12px;'>{pills_html}</div>", unsafe_allow_html=True)
+                render_html(f"<div style='margin-bottom: 12px;'>{pills_html}</div>")
             else:
-                st.markdown("<div style='font-size: 0.82rem; color: #64748b;'>No corroborating report IDs available.</div>", unsafe_allow_html=True)
+                render_html("<div style='font-size: 0.82rem; color: #64748b; margin-bottom: 12px;'>No corroborating report IDs available.</div>")
 
             # Prediction Basis / Explainability
-            st.markdown(f"""
-            <div style="font-size: 0.88rem; font-weight: 700; color: #0f172a; margin-top: 14px; margin-bottom: 2px;">
-                💡 Why this was prioritized
+            render_html(f"""
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.90rem; font-weight: 700; color: #0f172a; margin-top: 18px; margin-bottom: 8px;">
+                <span style="font-size: 1rem;">💡</span>
+                <span>Why this was prioritized</span>
             </div>
             <div class="basis-box">
-                <div>Priority is determined from report content and operational urgency signals.</div>
-                <div style="margin-top: 4px; font-weight: 500;">{pri_meta['basis']}</div>
+                <div class="basis-box-meta">Priority is determined from report content and operational urgency signals.</div>
+                <div class="basis-box-text">{pri_meta['basis']}</div>
             </div>
-            """, unsafe_allow_html=True)
+            """)
 
             # Related Reports In Incident Expander
             related_reports = pipeline.get_related_reports(pred.predicted_cluster_id)
@@ -764,25 +798,25 @@ elif nav_selection == "02 — Incident Fusion":
                 st.markdown("### Fusion Resolution")
 
                 if is_fused:
-                    st.markdown(f"""
+                    render_html(f"""
                     <div class="fusion-diagram-box" style="border-left: 4px solid #16a34a;">
                         <b>Report A</b> ({id_a}) ──┐<br>
                         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├──► <b>{pred_a.predicted_cluster_id}</b> &nbsp;[Category: <b>{pred_a.category}</b> | Priority: <b>{pred_a.priority_score:.1f}</b>]<br>
                         <b>Report B</b> ({id_b}) ──┘
                     </div>
-                    """, unsafe_allow_html=True)
+                    """)
 
                     st.success(
                         f"✅ **Semantic Fusion Verified**: Both dispatches were dynamically clustered into `{pred_a.predicted_cluster_id}`. "
                         f"Original report IDs (`{id_a}` and `{id_b}`) were mutually preserved as verifiable evidence."
                     )
                 else:
-                    st.markdown(f"""
+                    render_html(f"""
                     <div class="fusion-diagram-box" style="border-left: 4px solid #2563eb;">
                         <b>Report A</b> ({id_a}) ────► <b>{pred_a.predicted_cluster_id}</b> &nbsp;[Category: <b>{pred_a.category}</b> | Priority: <b>{pred_a.priority_score:.1f}</b>]<br><br>
                         <b>Report B</b> ({id_b}) ────► <b>{pred_b.predicted_cluster_id}</b> &nbsp;[Category: <b>{pred_b.category}</b> | Priority: <b>{pred_b.priority_score:.1f}</b>]
                     </div>
-                    """, unsafe_allow_html=True)
+                    """)
 
                     st.info(
                         f"ℹ️ **Distinct Incidents Identified**: The system determined these reports describe separate incidents "
