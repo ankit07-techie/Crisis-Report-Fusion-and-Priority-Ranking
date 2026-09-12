@@ -84,7 +84,8 @@ def test_evaluate_cli_csv(tmp_path):
         
     assert len(rows) == 2
     assert rows[0]["item_id"] == "ID_101"
-    assert rows[0]["category"] == "Hazardous Material / Fire"
+    # Strictly validate against the official TREC-IS Task-2 category string
+    assert rows[0]["category"] == "EmergingThreats"
     assert "ID_101" in rows[0]["evidence_ids"]
 
 
@@ -115,5 +116,6 @@ def test_evaluate_case_insensitive_keys(tmp_path):
         
     assert len(rows) == 1
     assert rows[0]["item_id"] == "CASE_01"
-    assert rows[0]["category"] == "Search & Rescue"
-    assert rows[0]["predicted_information_category"] == "Search & Rescue"
+    # Strictly validate against the official TREC-IS Task-2 category string
+    assert rows[0]["category"] == "SearchAndRescue"
+    assert rows[0]["predicted_information_category"] == "SearchAndRescue"

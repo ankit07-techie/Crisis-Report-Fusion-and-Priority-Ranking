@@ -13,7 +13,8 @@ def test_pipeline_single_report():
     assert isinstance(pred, Prediction)
     assert pred.item_id == "REP_001"
     assert pred.predicted_cluster_id.startswith("INCIDENT_")
-    assert pred.category == "Search & Rescue"
+    # Strictly validate against the official TREC-IS Task-2 category string
+    assert pred.category == "SearchAndRescue"
     assert pred.priority_score >= 4.0
     assert "REP_001" in pred.evidence_ids
 
@@ -43,7 +44,8 @@ def test_pipeline_batch_and_fusion():
     
     # R3 should have a different incident cluster
     assert p3.predicted_cluster_id != p1.predicted_cluster_id
-    assert p3.category == "Medical Assistance"
+    # Strictly validate against the official TREC-IS Task-2 category string
+    assert p3.category == "GoodsServices"
 
 
 def test_pipeline_dict_clustering_support():
